@@ -1,5 +1,5 @@
-resource "linode_firewall" "asiwko_firewall" {
-  label = "asiwko_firewall"
+resource "linode_firewall" "rustdesk_firewall" {
+  label = "rustdesk_firewall"
 
   inbound {
     label    = "allow-icmp"
