@@ -37,6 +37,15 @@ else
   echo "WARNING: data volume not found after waiting - falling back to local instance disk (NOT persistent across rebuilds)"
 fi
 
+echo "=== Opening RustDesk ports in firewalld ==="
+if systemctl is-active --quiet firewalld; then
+  firewall-cmd --permanent --add-port=21115-21119/tcp
+  firewall-cmd --permanent --add-port=21116/udp
+  firewall-cmd --reload
+else
+  echo "firewalld not active - skipping (relying on Linode Cloud Firewall only)"
+fi
+
 echo "=== Writing RustDesk compose file ==="
 cat > /opt/rustdesk/docker-compose.yml << 'COMPOSE'
 services:
