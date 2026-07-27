@@ -11,8 +11,33 @@ dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce
 dnf -y install docker-ce docker-ce-cli containerd.io docker-compose-plugin
 systemctl enable --now docker
 
-echo "=== Writing RustDesk compose file ==="
+echo "=== Waiting for attached data volume ==="
 mkdir -p /opt/rustdesk
+mkdir -p /opt/rustdesk/data
+VOLUME_DEV="/dev/disk/by-id/scsi-0Linode_Volume_rustdesk-data"
+for i in $(seq 1 60); do
+  if [ -e "$VOLUME_DEV" ]; then
+    break
+  fi
+  sleep 5
+done
+
+if [ -e "$VOLUME_DEV" ]; then
+  if ! blkid "$VOLUME_DEV" > /dev/null 2>&1; then
+    echo "=== No filesystem found on volume - formatting (first attach) ==="
+    mkfs.ext4 "$VOLUME_DEV"
+  else
+    echo "=== Existing filesystem found on volume - preserving data across rebuild ==="
+  fi
+  mount "$VOLUME_DEV" /opt/rustdesk/data
+  if ! grep -q "$VOLUME_DEV" /etc/fstab; then
+    echo "$VOLUME_DEV /opt/rustdesk/data ext4 defaults,noatime 0 2" >> /etc/fstab
+  fi
+else
+  echo "WARNING: data volume not found after waiting - falling back to local instance disk (NOT persistent across rebuilds)"
+fi
+
+echo "=== Writing RustDesk compose file ==="
 cat > /opt/rustdesk/docker-compose.yml << 'COMPOSE'
 services:
   hbbs:
@@ -33,8 +58,6 @@ services:
     network_mode: host
     restart: unless-stopped
 COMPOSE
-
-mkdir -p /opt/rustdesk/data
 
 echo "=== Starting RustDesk server ==="
 cd /opt/rustdesk

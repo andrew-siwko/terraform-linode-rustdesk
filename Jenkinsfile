@@ -46,13 +46,21 @@ pipeline {
 
         stage('Terraform Plan') {
             steps {
-                sh 'terraform plan'
+                sh 'terraform plan -out=tfplan'
+            }
+        }
+
+        stage('Approve Apply') {
+            steps {
+                timeout(time: 24, unit: 'HOURS') {
+                    input message: "Review the plan above in the console log. Apply it to terraform-linode-rustdesk?", ok: 'Apply'
+                }
             }
         }
 
         stage('Terraform Apply') {
             steps {
-                sh 'terraform apply -auto-approve'
+                sh 'terraform apply tfplan'
             }
         }
 
